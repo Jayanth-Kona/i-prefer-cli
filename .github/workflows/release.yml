@@ -1,0 +1,44 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'   # trigger on version tags
+
+jobs:
+  build:
+    name: Build binaries
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build for all platforms
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "Building version $VERSION"
+
+          mkdir -p dist
+
+          # Windows
+          GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$VERSION" -o dist/mytool-windows-amd64.exe
+
+          # Linux
+          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$VERSION" -o dist/mytool-linux-amd64
+
+          # Mac (Intel)
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=$VERSION" -o dist/mytool-darwin-amd64
+
+          # Mac (ARM / M1/M2)
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=$VERSION" -o dist/mytool-darwin-arm64
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
